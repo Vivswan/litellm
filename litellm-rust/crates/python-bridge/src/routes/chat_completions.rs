@@ -95,8 +95,7 @@ fn run_public(
     let host = InferenceHost::new(
         request.clone(),
         "litellm.rust_bridge.chat_completions.route_host",
-        &kwargs,
-    )?;
+    );
     let cache_call_type = if asynchronous {
         "acompletion"
     } else {

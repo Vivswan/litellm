@@ -408,6 +408,7 @@ fn converse_body(conversation: &Conversation, optional_params: &Map<String, Valu
         .filter(|(name, _)| {
             !CONFIG_PARAMS.contains(&name.as_str())
                 && name.as_str() != "stream"
+                && name.as_str() != "requestMetadata"
                 && !SUPPORTED_PARAMS
                     .iter()
                     .any(|(_, field)| *field == name.as_str())
@@ -415,6 +416,7 @@ fn converse_body(conversation: &Conversation, optional_params: &Map<String, Valu
         .map(|(name, value)| (name.clone(), value.clone()))
         .collect();
     let reports_reasoning_usage = additional_fields.contains_key("thinking");
+    let request_metadata = optional_params.get("requestMetadata").cloned();
 
     Value::Object(Map::from_iter(
         [
@@ -426,6 +428,7 @@ fn converse_body(conversation: &Conversation, optional_params: &Map<String, Valu
         ]
         .into_iter()
         .chain((!system.is_empty()).then(|| ("system".to_string(), json!(system))))
+        .chain(request_metadata.map(|value| ("requestMetadata".to_string(), value)))
         .chain((!additional_fields.is_empty()).then(|| {
             (
                 "additionalModelRequestFields".to_string(),

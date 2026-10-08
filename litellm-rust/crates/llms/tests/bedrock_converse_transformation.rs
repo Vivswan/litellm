@@ -150,7 +150,6 @@ fn declines_tools_and_other_params_outside_the_allowlist(#[case] param: Value) {
 #[case::top_k(json!({"topK":40}))]
 #[case::unknown(json!({"provider_extension":{"nested":[true,null,7]}}))]
 #[case::thinking(json!({"thinking": {"type": "enabled"}}))]
-#[case::request_metadata(json!({"requestMetadata": {"k": "v"}}))]
 fn places_leftover_params_in_additional_model_request_fields(#[case] param: Value) {
     let body = transform(json!([{"role":"user","content":"hi"}]), param.clone());
     for (name, value) in params(param) {
@@ -160,6 +159,16 @@ fn places_leftover_params_in_additional_model_request_fields(#[case] param: Valu
             "{name} must not reach the top level"
         );
     }
+}
+
+#[test]
+fn request_metadata_stays_at_the_top_level_as_python_places_it() {
+    let body = transform(
+        json!([{"role":"user","content":"hi"}]),
+        json!({"requestMetadata": {"k": "v"}, "topK": 40}),
+    );
+    assert_eq!(body["requestMetadata"], json!({"k": "v"}));
+    assert_eq!(body["additionalModelRequestFields"], json!({"topK": 40}));
 }
 
 #[test]
