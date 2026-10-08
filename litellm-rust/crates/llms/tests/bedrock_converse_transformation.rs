@@ -147,6 +147,39 @@ fn declines_tools_and_other_params_outside_the_allowlist(#[case] param: Value) {
 }
 
 #[rstest]
+#[case::top_k(json!({"topK":40}))]
+#[case::unknown(json!({"provider_extension":{"nested":[true,null,7]}}))]
+#[case::thinking(json!({"thinking": {"type": "enabled"}}))]
+#[case::request_metadata(json!({"requestMetadata": {"k": "v"}}))]
+fn places_leftover_params_in_additional_model_request_fields(#[case] param: Value) {
+    let body = transform(json!([{"role":"user","content":"hi"}]), param.clone());
+    for (name, value) in params(param) {
+        assert_eq!(body["additionalModelRequestFields"][&name], value);
+        assert!(
+            body.get(&name).is_none(),
+            "{name} must not reach the top level"
+        );
+    }
+}
+
+#[test]
+fn thinking_requests_the_reasoning_usage_path_python_requests() {
+    let body = transform(
+        json!([{"role":"user","content":"hi"}]),
+        json!({"thinking": {"type": "enabled", "budget_tokens": 1024}}),
+    );
+    assert_eq!(
+        body["additionalModelResponseFieldPaths"],
+        json!(["/usage/output_tokens_details"])
+    );
+    assert!(
+        transform(json!([{"role":"user","content":"hi"}]), json!({"topK": 40}))
+            .get("additionalModelResponseFieldPaths")
+            .is_none()
+    );
+}
+
+#[rstest]
 #[case::empty_string(json!(""))]
 #[case::whitespace_string(json!("   "))]
 #[case::whitespace_text_block(json!([{"type": "text", "text": " "}]))]

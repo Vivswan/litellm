@@ -403,6 +403,19 @@ fn converse_body(conversation: &Conversation, optional_params: &Map<String, Valu
         .map(|text| json!({"text": text}))
         .collect();
 
+    let additional_fields: Map<String, Value> = optional_params
+        .iter()
+        .filter(|(name, _)| {
+            !CONFIG_PARAMS.contains(&name.as_str())
+                && name.as_str() != "stream"
+                && !SUPPORTED_PARAMS
+                    .iter()
+                    .any(|(_, field)| *field == name.as_str())
+        })
+        .map(|(name, value)| (name.clone(), value.clone()))
+        .collect();
+    let reports_reasoning_usage = additional_fields.contains_key("thinking");
+
     Value::Object(Map::from_iter(
         [
             (
@@ -412,7 +425,19 @@ fn converse_body(conversation: &Conversation, optional_params: &Map<String, Valu
             ("messages".to_string(), json!(messages)),
         ]
         .into_iter()
-        .chain((!system.is_empty()).then(|| ("system".to_string(), json!(system)))),
+        .chain((!system.is_empty()).then(|| ("system".to_string(), json!(system))))
+        .chain((!additional_fields.is_empty()).then(|| {
+            (
+                "additionalModelRequestFields".to_string(),
+                Value::Object(additional_fields),
+            )
+        }))
+        .chain(reports_reasoning_usage.then(|| {
+            (
+                "additionalModelResponseFieldPaths".to_string(),
+                json!(["/usage/output_tokens_details"]),
+            )
+        })),
     ))
 }
 
